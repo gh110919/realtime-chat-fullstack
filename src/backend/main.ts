@@ -6,14 +6,13 @@ import { drop } from "./drop";
 import { triggers } from "./triggers";
 import { orm } from "./orm";
 
-
 (async function () {
   const http = (await import("http")).default;
   const https = (await import("https")).default;
   const express = (await import("express")).default();
 
   const { parsed } = (await import("dotenv")).config({
-    path: ".env",
+    path: process.env.secret,
   });
 
   const cors = (await import("cors")).default({
