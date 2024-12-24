@@ -1,0 +1,14 @@
+[
+  {
+    "url": "http://10.0.0.2:3080/api/crud/data",
+    "endpoint": "/data",
+    "table": "data",
+    "type": "TData"
+  },
+  {
+    "url": "http://10.0.0.2:3080/api/crud/data_log",
+    "endpoint": "/data_log",
+    "table": "data_log",
+    "type": "TDataLog"
+  }
+]

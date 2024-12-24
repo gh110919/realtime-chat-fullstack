@@ -1,0 +1,17 @@
+{
+  "create": [
+    {
+      "table": "data",
+      "fields": { "id": "string", "message": "text", "created_at": "timestamp" }
+    },
+    {
+      "table": "data_log",
+      "fields": {
+        "id": "string",
+        "action": "text",
+        "message": "text",
+        "created_at": "timestamp"
+      }
+    }
+  ]
+}

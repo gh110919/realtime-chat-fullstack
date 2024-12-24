@@ -1,0 +1,47 @@
+@import url("https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap");
+
+:root {
+  --dv: calc(calc(1 / 1920) * 100vw);
+  --tv: calc(calc(1 / 1024) * 100vw);
+  --mv: calc(calc(1 / 768) * 100vw);
+  --main: #17b7a2;
+  --accent: #f6f6f6;
+  --primary: #2a2a2a;
+  --secondary: #a3a3a3;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Raleway, Inter, sans-serif;
+  font-feature-settings: "lnum";
+}
+p {
+  white-space: pre-line;
+}
+a {
+  text-decoration: none;
+  color: black;
+  cursor: pointer;
+}
+ul {
+  list-style: none;
+}
+html {
+  scrollbar-width: none;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+input:focus {
+  outline: none;
+}
+input,
+button,
+fieldset {
+  border: none;
+  cursor: pointer;
+}
