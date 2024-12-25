@@ -46,18 +46,29 @@ export const websocketMiddleware = async (http: Server) => {
   };
 
   (async function recursive() {
-    let previous = await orm.count("data_log");
-
-    (async function () {
-      let current = await orm.count("data_log");
-
-      const apply = async () => {
-        await applyChanges();
-        await recursive();
-      };
-
-      current !== previous ? await apply() : await recursive();
-    })();
+    let previous: number;
+    try {
+      previous = await orm.count("data_log");
+      (async function () {
+        let current: number;
+        try {
+          current = await orm.count("data_log");
+          const apply = async () => {
+            await applyChanges();
+            await recursive();
+          };
+          current !== previous ? await apply() : await recursive();
+        } catch (error) {
+          throw new Error(
+            `Ошибка при получении текущего количества записей:${error}`
+          );
+        }
+      })();
+    } catch (error) {
+      throw new Error(
+        `Ошибка при получении предыдущего количества записей:${error}`
+      );
+    }
   })();
 
   wsServer.on("connection", async (ws: any) => {
