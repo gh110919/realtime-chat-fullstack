@@ -2,18 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 
 const useWebSocket = (url: string) => {
-  const [messages, setMessages] = useState<
-    { id: string; message: string; created_at: string }[]
-  >([]);
+  type TMessage = { id: string; message: string; created_at: string };
+
+  const [messages, setMessages] = useState<TMessage[]>([]);
+
   const ws = useRef<WebSocket | null>(null);
+  
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     const connect = () => {
       ws.current = new WebSocket(url);
 
-      ws.current.onopen = () => {
-        console.log("WebSocket connection established.");
-      };
+      ws.current.onopen = () => setIsConnected(true);
 
       ws.current.onmessage = (event: { data: any }) => {
         const parsedData = JSON.parse(event.data);
@@ -21,7 +22,15 @@ const useWebSocket = (url: string) => {
         if (parsedData.type === "init") {
           setMessages(parsedData.messages);
         } else if (parsedData.type === "new") {
-          setMessages((prevMessages) => [...prevMessages, parsedData.message]);
+          setMessages((prevMessages) => {
+            const exists = prevMessages.some(
+              (msg) => msg.id === parsedData.message.id
+            );
+            if (!exists) {
+              return [...prevMessages, parsedData.message];
+            }
+            return prevMessages;
+          });
         } else if (parsedData.type === "update") {
           setMessages((prevMessages) =>
             prevMessages.map((msg) =>
@@ -35,36 +44,26 @@ const useWebSocket = (url: string) => {
         }
       };
 
-      ws.current.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
+      ws.current.onerror = () => setIsConnected(false);
 
-      ws.current.onclose = (event) => {
-        console.log(
-          "WebSocket connection closed. Reconnecting...",
-          event.reason
-        );
-        setTimeout(connect, 1000); // Reconnect after 1 second
+      ws.current.onclose = () => {
+        setIsConnected(false);
+        setTimeout(connect, 1000);
       };
     };
 
     connect();
 
     return () => {
-      if (ws.current) {
+      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
         ws.current.close();
       }
     };
   }, [url]);
 
   const sendMessage = (action: string, message: any) => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
+    if (ws.current?.readyState === WebSocket.OPEN && isConnected) {
       ws.current.send(JSON.stringify({ action, ...message }));
-    } else {
-      console.warn(
-        "WebSocket is not open. ReadyState:",
-        ws.current?.readyState
-      );
     }
   };
 
@@ -97,7 +96,11 @@ export const Chat = () => {
           {messages.map((e) => (
             <div key={e.id}>
               {`${e.created_at}: ${e.message}`}
-              <button onClick={() => handleUpdateMessage(e.id, "Updated message")}>Update</button>
+              <button
+                onClick={() => handleUpdateMessage(e.id, "Updated message")}
+              >
+                Update
+              </button>
               <button onClick={() => handleDeleteMessage(e.id)}>Delete</button>
             </div>
           ))}
