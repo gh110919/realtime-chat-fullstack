@@ -12,7 +12,7 @@ import { orm } from "./orm";
   const express = (await import("express")).default();
 
   const { parsed } = (await import("dotenv")).config({
-    path: process.env.secret,
+    path: ".local/.env",
   });
 
   const cors = (await import("cors")).default({

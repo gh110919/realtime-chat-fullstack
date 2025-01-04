@@ -29,14 +29,16 @@
     "typescript-eslint": "^8.18.1",
     "vite": "^6.0.3"
   },
-  "name": "realtime-chat",
+  "name": "realtime-chat-fullstack",
   "private": true,
   "scripts": {
     "back": "nodemon",
     "build": "tsc -b && vite build",
     "dev": "vite",
+    "docker": "bash shell/up.sh",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prune": "bash shell/prune.sh"
   },
   "type": "module",
   "version": "0.0.0"
