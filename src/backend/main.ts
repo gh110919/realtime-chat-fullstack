@@ -4,33 +4,24 @@ import { websocketMiddleware } from "./websocket-middleware";
 import { migrate } from "./migrate";
 import { drop } from "./drop";
 import { triggers } from "./triggers";
-import { orm } from "./orm";
 
 (async function () {
   const http = (await import("http")).default;
   const https = (await import("https")).default;
   const express = (await import("express")).default();
 
-  const { parsed } = (await import("dotenv")).config({
+  const { WS, HTTP, HTTPS } = (await import("dotenv")).config({
     path: ".local/.env",
-  });
+  }).parsed!;
 
-  const cors = (await import("cors")).default({
-    origin: "http://localhost:3000",
-    credentials: true,
-  });
+  const cors = (await import("cors")).default;
 
   const listener = () => {
     try {
       express
-        .use(cors)
+        .options("*", cors({ origin: "*" }))
+        .use(cors())
         .use(json())
-        .put("/api", (req, res) => {
-          orm.update("data", req.query, req.body).then(async () => {
-            const data = await orm.filtering("data", req.query);
-            res.status(200).json(data);
-          });
-        })
         .patch("/api/triggers", triggers)
         .delete("/api/drop", drop)
         .post("/api/migrate", migrate)
@@ -46,21 +37,21 @@ import { orm } from "./orm";
 
   const server = http
     .createServer(express)
-    .listen(parsed!.ws, () => websocketMiddleware(server));
+    .listen(WS, () => websocketMiddleware(server));
 
   const ssl = {};
 
-  http.createServer(express).listen(parsed!.http, listener);
+  http.createServer(express).listen(HTTP, listener);
 
-  https.createServer(ssl, express).listen(parsed!.https, listener);
+  https.createServer(ssl, express).listen(HTTPS, listener);
 
   const host = (() => {
     const interfaces = Object.values(networkInterfaces()).flat();
     const ip = interfaces.find((e) => e?.family === "IPv4" && !e?.internal);
     return {
-      ws: `ws://${ip?.address}:${parsed!.ws}`,
-      http: `http://${ip?.address}:${parsed!.http}`,
-      https: `https://${ip?.address}:${parsed!.https}`,
+      ws: `ws://${ip?.address}:${WS}`,
+      http: `http://${ip?.address}:${HTTP}`,
+      https: `https://${ip?.address}:${HTTPS}`,
     };
   })();
 

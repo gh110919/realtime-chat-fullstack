@@ -97,7 +97,7 @@ export const migrate = async (req: Request, res: Response) => {
         );
         console.log(`Таблица "${e.table}" успешно создана!`);
       } else {
-        const columns = await orm(e.table).columnInfo();
+        const columns = await orm.read(e.table).columnInfo();
         console.log(`Существующие столбцы в таблице ${e.table}:`, columns);
 
         await orm.schema.alterTable(e.table, (table: Knex.AlterTableBuilder) =>

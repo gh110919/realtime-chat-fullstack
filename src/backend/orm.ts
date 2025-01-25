@@ -1,8 +1,13 @@
+import { config } from "dotenv";
 import knex from "knex";
 
+const { PG } = config({
+  path: ".local/.env",
+}).parsed!;
+
 export const connection = knex({
-  client: "sqlite3",
-  connection: { filename: "src/backend/assets/sqlite.db" },
+  client: "pg",
+  connection: PG,
   useNullAsDefault: true,
 });
 
