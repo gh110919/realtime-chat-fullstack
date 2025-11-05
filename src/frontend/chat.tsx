@@ -164,32 +164,21 @@ export const Chat = () => {
       <ChatInputBox>
         <ChatBox>
           {messages.map((e) => (
-            <div
-              key={e._id}
-              style={{
-                border: "1px solid",
-                padding: "8px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-              }}
-            >
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-              >
+            <Message key={e._id}>
+              <Content>
                 <p>ID: {e._id}</p>
-                <p>{e.content}</p>
+                <Text>{e.content}</Text>
                 <p>Дата: {e._created_at}</p>
-              </div>
-              <div style={{ display: "flex", gap: "16px" }}>
-                <button onClick={() => handleUpdateMessage(e._id!)}>
+              </Content>
+              <Buttons>
+                <Button onClick={() => handleUpdateMessage(e._id!)}>
                   Update
-                </button>
-                <button onClick={() => handleDeleteMessage(e._id!)}>
+                </Button>
+                <Button onClick={() => handleDeleteMessage(e._id!)}>
                   Delete
-                </button>
-              </div>
-            </div>
+                </Button>
+              </Buttons>
+            </Message>
           ))}
         </ChatBox>
         <InputButtonBox>
@@ -204,6 +193,36 @@ export const Chat = () => {
     </Container>
   );
 };
+
+const Text = styled.div<{}>`
+  ${(p) => (p.className = "Text")};
+  word-break: break-all;
+  white-space: pre-line;
+  width: 95%;
+  height: fit-content;
+`;
+
+const Buttons = styled.div<{}>`
+  ${(p) => (p.className = "Buttons")};
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const Content = styled.div<{}>`
+  ${(p) => (p.className = "Content")};
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const Message = styled.div<{}>`
+  ${(p) => (p.className = "Message")};
+  border: 1px solid;
+  padding: 8px;
+  display: flex;
+  justify-content: space-between;
+`;
 
 const ChatInputBox = styled.div`
   display: flex;
