@@ -1,14 +1,1 @@
-[
-  {
-    "url": "http://10.0.0.2:3080/api/crud/data",
-    "endpoint": "/data",
-    "table": "data",
-    "type": "TData"
-  },
-  {
-    "url": "http://10.0.0.2:3080/api/crud/data_log",
-    "endpoint": "/data_log",
-    "table": "data_log",
-    "type": "TDataLog"
-  }
-]
+[{"url":"http://10.0.0.2:3080/api/crud/message","endpoint":"/message","table":"message","type":"TMessage"},{"url":"http://10.0.0.2:3080/api/crud/trigger","endpoint":"/trigger","table":"trigger","type":"TTrigger"}]

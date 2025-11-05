@@ -1,17 +1,16 @@
 import { json } from "express";
 import { networkInterfaces } from "os";
-import { websocketMiddleware } from "./websocket-middleware";
-import { migrate } from "./migrate";
 import { drop } from "./drop";
+import { migrate } from "./migrate";
 import { triggers } from "./triggers";
+import { websocketMiddleware } from "./websocket-middleware";
 
 (async function () {
   const http = (await import("http")).default;
-  const https = (await import("https")).default;
   const express = (await import("express")).default();
 
-  const { WS, HTTP, HTTPS } = (await import("dotenv")).config({
-    path: ".local/.env",
+  const { WS, HTTP } = (await import("dotenv")).config({
+    path: ".env",
   }).parsed!;
 
   const cors = (await import("cors")).default;
@@ -28,32 +27,22 @@ import { triggers } from "./triggers";
         .get("/", (_, res) => {
           res.send("Сервер работает в штатном режиме");
         });
-
-      console.log(true);
     } catch (error) {
       console.error(`Исключение экспресс-сервера: ${error}`);
     }
   };
 
-  const server = http
-    .createServer(express)
-    .listen(WS, () => websocketMiddleware(server));
+  const server = http.createServer(express);
 
-  const ssl = {};
+  server.listen(HTTP, listener);
+  server.listen(WS, () => websocketMiddleware(server));
 
-  http.createServer(express).listen(HTTP, listener);
+  const { address } = Object.values(networkInterfaces())
+    .flat()
+    .find(({ family, internal }: any) => family === "IPv4" && !internal)!;
 
-  https.createServer(ssl, express).listen(HTTPS, listener);
-
-  const host = (() => {
-    const interfaces = Object.values(networkInterfaces()).flat();
-    const ip = interfaces.find((e) => e?.family === "IPv4" && !e?.internal);
-    return {
-      ws: `ws://${ip?.address}:${WS}`,
-      http: `http://${ip?.address}:${HTTP}`,
-      https: `https://${ip?.address}:${HTTPS}`,
-    };
-  })();
-
-  console.log(host);
+  console.table({
+    ws: `ws://${address}:${WS}`,
+    http: `http://${address}:${HTTP}`,
+  });
 })();

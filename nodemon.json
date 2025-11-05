@@ -1,5 +1,5 @@
 {
-  "exec": "bun run src/backend/main.ts",
-  "ext": "ts",
-  "watch": ["."]
+  "exec": "npx pm2-runtime start ecosystem.config.cjs",
+  "ext": "*",
+  "watch": ["src"]
 }

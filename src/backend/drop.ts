@@ -1,8 +1,16 @@
 import { Request, Response } from "express";
 import { writeFileSync } from "fs";
-import { orm } from "./orm"; 
+
 
 export const drop = async (req: Request, res: Response) => {
+    const orm = (await import("knex")).default({
+    client: "sqlite3",
+    connection: {
+      filename: "database.sqlite",
+    },
+    useNullAsDefault: true,
+  });
+  
   try {
     req.body.delete.forEach(async (e: { table: string }) => {
       await orm.schema.dropTableIfExists(e.table);

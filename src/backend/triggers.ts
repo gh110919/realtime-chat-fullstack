@@ -4,29 +4,29 @@ import { orm } from "./orm";
 export const triggers = async (_: Request, res: Response) => {
   try {
     await orm.raw(`
-      CREATE TRIGGER data_after_insert
-      AFTER INSERT ON data
+      CREATE TRIGGER message_after_insert
+      AFTER INSERT ON message
       BEGIN
-        INSERT INTO data_log (id, "action", message, created_at) 
-        VALUES (NEW.id, 'INSERT', NEW.message, CURRENT_TIMESTAMP);
+        INSERT INTO trigger (_id, "action", content, _created_at) 
+        VALUES (NEW._id, 'INSERT', NEW.content, CURRENT_TIMESTAMP);
       END;
     `);
 
     await orm.raw(`
-      CREATE TRIGGER data_after_update
-      AFTER UPDATE ON data
+      CREATE TRIGGER message_after_update
+      AFTER UPDATE ON message
       BEGIN
-        INSERT INTO data_log (id, "action", message, created_at) 
-        VALUES (NEW.id, 'UPDATE', NEW.message, CURRENT_TIMESTAMP);
+        INSERT INTO trigger (_id, "action", content, _created_at) 
+        VALUES (NEW._id, 'UPDATE', NEW.content, CURRENT_TIMESTAMP);
       END;
     `);
 
     await orm.raw(`
-      CREATE TRIGGER data_after_delete
-      AFTER DELETE ON data
+      CREATE TRIGGER message_after_delete
+      AFTER DELETE ON message
       BEGIN
-        INSERT INTO data_log (id, "action", message, created_at) 
-        VALUES (OLD.id, 'DELETE', OLD.message, CURRENT_TIMESTAMP);
+        INSERT INTO trigger (_id, "action", content, _created_at) 
+        VALUES (OLD._id, 'DELETE', OLD.content, CURRENT_TIMESTAMP);
       END;
     `);
 

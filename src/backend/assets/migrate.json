@@ -1,16 +1,25 @@
 {
   "create": [
     {
-      "table": "data",
-      "fields": { "id": "string", "message": "text", "created_at": "timestamp" }
+      "table": "message",
+      "fields": {
+        "_id": "string",
+        "_created_at": "timestamp",
+        "_updated_at": "timestamp",
+        "content": "text",
+        "readed": "boolean",
+        "updated": "boolean",
+        "deleted": "boolean"
+      }
     },
     {
-      "table": "data_log",
+      "table": "trigger",
       "fields": {
-        "id": "string",
-        "action": "text",
-        "message": "text",
-        "created_at": "timestamp"
+        "_id": "string",
+        "_created_at": "timestamp",
+        "_updated_at": "timestamp",
+        "action": "string",
+        "content": "text"
       }
     }
   ]

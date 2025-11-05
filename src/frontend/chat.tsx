@@ -1,52 +1,114 @@
 import { useEffect, useRef, useState } from "react";
-import styled from "styled-components";
+import { styled } from "styled-components";
 
 const useWebSocket = (url: string) => {
-  type TMessage = { id: string; message: string; created_at: string };
+  type Message = Partial<{
+    _id: string;
+    _created_at: string;
+    _updated_at: string;
+    readed: boolean;
+    edited: boolean;
+    deleted: boolean;
+    content: string;
+  }>;
 
-  const [messages, setMessages] = useState<TMessage[]>([]);
+  type Data =
+    | {
+        action: "CONNECTING";
+        messages: {
+          _id: string;
+          _created_at: string;
+          _updated_at: string;
+          readed: boolean;
+          edited: boolean;
+          deleted: boolean;
+          content: string;
+        }[];
+      }
+    | {
+        action: "INSERT";
+        message: {
+          _id: string;
+          content?: string;
+        };
+      }
+    | {
+        action: "UPDATE";
+        message: {
+          _id: string;
+          content: string;
+        };
+      }
+    | {
+        action: "DELETE";
+        message: {
+          _id: string;
+        };
+      };
 
-  const ws = useRef<WebSocket | null>(null);
-  
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  const socket = useRef<WebSocket | null>(null);
+
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     const connect = () => {
-      ws.current = new WebSocket(url);
+      socket.current = new WebSocket(url);
 
-      ws.current.onopen = () => setIsConnected(true);
+      socket.current.onopen = () => setIsConnected(true);
 
-      ws.current.onmessage = (event: { data: any }) => {
-        const parsedData = JSON.parse(event.data);
+      socket.current.onmessage = (event: { data: any }) => {
+        const parsed: Data = JSON.parse(event.data);
+        console.log("parsed", parsed);
 
-        if (parsedData.type === "init") {
-          setMessages(parsedData.messages);
-        } else if (parsedData.type === "new") {
-          setMessages((prevMessages) => {
-            const exists = prevMessages.some(
-              (msg) => msg.id === parsedData.message.id
+        const CONNECTING = () => {
+          if (parsed.action === "CONNECTING") {
+            setMessages(parsed.messages);
+          }
+        };
+
+        const INSERT = () => {
+          if (parsed.action === "INSERT") {
+            setMessages((p) =>
+              !p.some((m) => m._id === parsed.message._id)
+                ? [...p, parsed.message]
+                : p
             );
-            if (!exists) {
-              return [...prevMessages, parsedData.message];
-            }
-            return prevMessages;
-          });
-        } else if (parsedData.type === "update") {
-          setMessages((prevMessages) =>
-            prevMessages.map((msg) =>
-              msg.id === parsedData.message.id ? parsedData.message : msg
-            )
-          );
-        } else if (parsedData.type === "delete") {
-          setMessages((prevMessages) =>
-            prevMessages.filter((msg) => msg.id !== parsedData.id)
-          );
-        }
+          }
+        };
+
+        const UPDATE = () => {
+          if (parsed.action === "UPDATE") {
+            setMessages((p) =>
+              p.map((msg) =>
+                msg._id === parsed.message._id ? parsed.message : msg
+              )
+            );
+          }
+        };
+
+        const DELETE = () => {
+          if (parsed.action === "DELETE") {
+            setMessages((p) =>
+              p.filter((msg) => msg._id !== parsed.message._id)
+            );
+          }
+        };
+
+        (
+          ({
+            CONNECTING,
+            INSERT,
+            UPDATE,
+            DELETE,
+          }) as { [x: string]: () => void }
+        )[parsed.action]();
       };
 
-      ws.current.onerror = () => setIsConnected(false);
+      socket.current.onerror = () => setIsConnected(false);
 
-      ws.current.onclose = () => {
+      socket.current.onclose = () => {
         setIsConnected(false);
         setTimeout(connect, 1000);
       };
@@ -55,15 +117,15 @@ const useWebSocket = (url: string) => {
     connect();
 
     return () => {
-      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-        ws.current.close();
+      if (socket.current && socket.current.readyState === 1) {
+        socket.current.close();
       }
     };
   }, [url]);
 
-  const sendMessage = (action: string, message: any) => {
-    if (ws.current?.readyState === WebSocket.OPEN && isConnected) {
-      ws.current.send(JSON.stringify({ action, ...message }));
+  const sendMessage = ({ action, message }: any) => {
+    if (socket.current?.readyState === 1 && isConnected) {
+      socket.current.send(JSON.stringify({ action, message }));
     }
   };
 
@@ -75,18 +137,26 @@ export const Chat = () => {
   const [input, setInput] = useState("");
 
   const handleSendMessage = () => {
-    if (input.trim()) {
-      sendMessage("insert", { message: input });
-      setInput("");
-    }
+    sendMessage({
+      action: "INSERT",
+      message: { content: input },
+    });
+    setInput("");
   };
 
-  const handleUpdateMessage = (id: string, message: string) => {
-    sendMessage("update", { id, message });
+  const handleUpdateMessage = (_id: string) => {
+    sendMessage({
+      action: "UPDATE",
+      message: { _id, content: input },
+    });
+    setInput("");
   };
 
-  const handleDeleteMessage = (id: string) => {
-    sendMessage("delete", { id });
+  const handleDeleteMessage = (_id: string) => {
+    sendMessage({
+      action: "DELETE",
+      message: { _id },
+    });
   };
 
   return (
@@ -94,14 +164,31 @@ export const Chat = () => {
       <ChatInputBox>
         <ChatBox>
           {messages.map((e) => (
-            <div key={e.id}>
-              {`${e.created_at}: ${e.message}`}
-              <button
-                onClick={() => handleUpdateMessage(e.id, "Updated message")}
+            <div
+              key={e._id}
+              style={{
+                border: "1px solid",
+                padding: "8px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+              }}
+            >
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
               >
-                Update
-              </button>
-              <button onClick={() => handleDeleteMessage(e.id)}>Delete</button>
+                <p>ID: {e._id}</p>
+                <p>{e.content}</p>
+                <p>Дата: {e._created_at}</p>
+              </div>
+              <div style={{ display: "flex", gap: "16px" }}>
+                <button onClick={() => handleUpdateMessage(e._id!)}>
+                  Update
+                </button>
+                <button onClick={() => handleDeleteMessage(e._id!)}>
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </ChatBox>
@@ -149,6 +236,7 @@ const ChatBox = styled.div`
   overflow: auto;
   padding: 20px;
   background-color: #f9f9f9;
+  gap: 8px;
 `;
 
 const Input = styled.input`

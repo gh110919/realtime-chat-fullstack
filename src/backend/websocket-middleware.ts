@@ -3,146 +3,161 @@ import { v4 } from "uuid";
 import { orm } from "./orm";
 
 export const websocketMiddleware = async (http: Server) => {
-  const { WebSocket } = (await import("ws")).default;
+  const {
+    WebSocket: { OPEN, Server },
+  } = (await import("ws")).default;
 
-  const wsServer = new WebSocket.Server({ server: http });
-
-  const timestamp = new Date().toISOString();
+  const server = new Server({ server: http });
 
   const applyChanges = async () => {
-    const logEntries = await orm.read("data_log");
+    const logs = await orm("trigger");
 
-    const latestLogEntry = logEntries[logEntries.length - 1];
+    const { action, _id } = logs[logs.length - 1];
 
-    if (latestLogEntry.action === "INSERT") {
-      const newMessage = await orm.filtering("data", {
-        id: latestLogEntry.id,
-      });
-      wsServer.clients.forEach((client: any) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({ type: "new", message: newMessage[0] }));
-        }
-      });
-    } else if (latestLogEntry.action === "UPDATE") {
-      const updatedMessage = await orm.filtering("data", {
-        id: latestLogEntry.id,
-      });
-      wsServer.clients.forEach((client: any) => {
-        if (client.readyState === WebSocket.OPEN) {
+    if (action === "INSERT") {
+      server.clients.forEach(async (client) => {
+        if (client.readyState === OPEN) {
           client.send(
-            JSON.stringify({ type: "update", message: updatedMessage[0] })
+            JSON.stringify({
+              action,
+              message: await orm("message").where({ _id }).first(),
+            })
           );
         }
       });
-    } else if (latestLogEntry.action === "DELETE") {
-      wsServer.clients.forEach((client: any) => {
-        if (client.readyState === WebSocket.OPEN) {
+    }
+
+    if (action === "UPDATE") {
+      server.clients.forEach(async (client) => {
+        if (client.readyState === OPEN) {
           client.send(
-            JSON.stringify({ type: "delete", id: latestLogEntry.id })
+            JSON.stringify({
+              action,
+              message: await orm("message").where({ _id }).first(),
+            })
           );
+        }
+      });
+    }
+
+    if (action === "DELETE") {
+      server.clients.forEach((client) => {
+        if (client.readyState === OPEN) {
+          client.send(JSON.stringify({ action, message: { _id } }));
         }
       });
     }
   };
 
+  const count = async (column: string, table: string) => {
+    const r = await orm.raw(
+      `SELECT COUNT(${column}) AS ${column} FROM ${table}`
+    );
+    
+    return r[0][`${column}`];
+  };
+
   (async function recursive() {
-    let previous: number;
-    try {
-      previous = await orm.count("data_log");
-      (async function () {
-        let current: number;
-        try {
-          current = await orm.count("data_log");
-          const apply = async () => {
-            await applyChanges();
-            await recursive();
-          };
-          current !== previous ? await apply() : await recursive();
-        } catch (error) {
-          throw new Error(
-            `Ошибка при получении текущего количества записей:${error}`
-          );
-        }
-      })();
-    } catch (error) {
-      throw new Error(
-        `Ошибка при получении предыдущего количества записей:${error}`
-      );
-    }
+    const previous = await count("_id", "trigger");
+
+    (async function () {
+      const current = await count("_id", "trigger");
+
+      const apply = async () => {
+        await applyChanges();
+        await recursive();
+      };
+
+      current !== previous ? await apply() : await recursive();
+    })();
   })();
 
-  wsServer.on("connection", async (ws: any) => {
-    const existingMessages = await orm.sorting("data", "created_at", "asc");
+  server.on("connection", async (socket) => {
+    socket.send(
+      JSON.stringify({
+        action: "CONNECTING",
+        messages: await orm("message")
+          .where({ deleted: false })
+          .orderBy("_created_at", "asc"),
+      })
+    );
 
-    ws.send(JSON.stringify({ type: "init", messages: existingMessages }));
+    socket.on("message", async (data) => {
+      const {
+        action,
+        message: { _id, content },
+      } = JSON.parse(data.toString());
 
-    ws.on("message", async (data: any) => {
-      const { id, action, message } = JSON.parse(data.toString());
-
-      if (action === "insert") {
-        const newMessage = {
-          id: v4(),
-          message: message,
-          created_at: timestamp,
+      if (action === "INSERT") {
+        const message = {
+          _id: v4(),
+          content,
         };
 
-        await orm.create("data", newMessage);
+        await orm("message").insert(message);
 
-        await orm.create("data_log", {
-          id: newMessage.id,
-          action: "INSERT",
-          created_at: newMessage.created_at,
-          message: newMessage.message,
-        });
+        await orm("trigger").insert({ action, ...message });
 
-        wsServer.clients.forEach((client: any) => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: "new", message: newMessage }));
-          }
-        });
-      } else if (action === "update") {
-        await orm.update("data", { id }, { message });
-
-        await orm.create("data_log", {
-          id,
-          action: "UPDATE",
-          created_at: timestamp,
-          message,
-        });
-
-        wsServer.clients.forEach((client: any) => {
-          if (client.readyState === WebSocket.OPEN) {
+        server.clients.forEach(async (client) => {
+          if (client.readyState === OPEN) {
             client.send(
               JSON.stringify({
-                type: "update",
-                message: { id, action, message },
+                action,
+                message: await orm("message")
+                  .where({ _id: message._id })
+                  .first(),
               })
             );
           }
         });
-      } else if (action === "delete") {
-        await orm.delete("data", { id });
+      }
 
-        await orm.create("data_log", {
-          id,
-          action: "DELETE",
-          created_at: timestamp,
-          message,
+      if (action === "UPDATE") {
+        await orm("message").where({ _id }).update({
+          content,
+          updated: true,
         });
 
-        wsServer.clients.forEach((client: any) => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: "delete", id }));
+        await orm("trigger").insert({ action, _id, content });
+
+        server.clients.forEach(async (client) => {
+          if (client.readyState === OPEN) {
+            client.send(
+              JSON.stringify({
+                action,
+                message: await orm("message").where({ _id }).first(),
+              })
+            );
+          }
+        });
+      }
+
+      if (action === "DELETE") {
+        await orm("message").where({ _id }).update({
+          content,
+          deleted: true,
+        });
+
+        await orm("trigger").insert({ action, _id, content });
+
+        server.clients.forEach(async (client) => {
+          if (client.readyState === OPEN) {
+            client.send(
+              JSON.stringify({
+                action,
+                message: await orm("message").where({ _id }).first(),
+              })
+            );
           }
         });
       }
     });
 
-    ws.on("close", () => {
-      console.log("Connection closed");
+    socket.on("close", () => {
+      console.warn("Connection closed");
     });
 
-    ws.on("error", (error: any) => {
+    socket.on("error", (error: any) => {
       console.error("WebSocket error:", error);
     });
   });

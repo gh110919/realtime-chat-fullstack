@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "backend",
       script: "bash",
-      args: "shell/back.sh",
+      args: "cmd/backend.sh",
       watch: false,
       autorestart: true,
       restart_delay: 5000,
@@ -11,7 +11,7 @@ module.exports = {
     {
       name: "frontend",
       script: "bash",
-      args: "shell/front.sh",
+      args: "cmd/frontend.sh",
       watch: false,
       autorestart: true,
       restart_delay: 5000,

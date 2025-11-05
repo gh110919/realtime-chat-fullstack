@@ -1,0 +1,25 @@
+networks:
+  default:
+    name: network_default_bridge
+    driver: bridge
+services:
+  fullstack_service:
+    build:
+      context: .
+      dockerfile: bun.bookworm-slim.dockerfile
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1"
+          memory: "1G"
+    ports:
+      - "3080:3080"
+      - "3180:3180"
+      - "4173:4173"
+      - "5173:5173"
+    stdin_open: true
+    tty: true
+    restart: always
+    image: fullstack_image
+    container_name: fullstack_container

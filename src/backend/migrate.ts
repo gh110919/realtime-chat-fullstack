@@ -1,13 +1,12 @@
 import { Request, Response } from "express";
 import { writeFileSync } from "fs";
+import { Knex } from "knex";
 import { orm } from "./orm";
 
-import { Knex } from "knex";
-
-export type TMigrate = {
+type TMigrate = {
   table: string;
   fields: {
-    [x: string]:
+    [key: string]:
       | "string"
       | "text"
       | "integer"
@@ -15,6 +14,10 @@ export type TMigrate = {
       | "foreign"
       | "timestamp";
   };
+};
+
+const toCamelCase = (str: string): string => {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 };
 
 const modifyTable = async (
@@ -26,20 +29,17 @@ const modifyTable = async (
 
   Object.entries(fields).forEach(([field, type]) => {
     if (!columns[field]) {
-      if (type === "string") {
-        table.string(field);
-      } else if (type === "text") {
-        table.text(field);
-      } else if (type === "integer") {
-        table.integer(field);
-      } else if (type === "boolean") {
-        table.boolean(field);
-      } else if (type === "timestamp") {
-        table.timestamp(field).defaultTo(orm.fn.now());
-      } else if (type === "foreign") {
-        const [key, id, table_] = field.split(".");
-        foreignKeys[key] = { id, table_ };
-      }
+      ({
+        string: () => table.string(field),
+        text: () => table.text(field),
+        integer: () => table.integer(field),
+        boolean: () => table.boolean(field).defaultTo(false),
+        timestamp: () => table.timestamp(field).defaultTo(orm.fn.now()),
+        foreign: () => {
+          const [key, id, table_] = field.split(".");
+          foreignKeys[key] = { id, table_ };
+        },
+      })[type]();
     }
   });
 
@@ -52,10 +52,6 @@ const modifyTable = async (
   Object.keys(columns).forEach((column) => {
     if (!fields[column]) table.dropColumn(column);
   });
-};
-
-export const toCamelCase = (str: string): string => {
-  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 };
 
 export const migrate = async (req: Request, res: Response) => {
@@ -97,7 +93,7 @@ export const migrate = async (req: Request, res: Response) => {
         );
         console.log(`Таблица "${e.table}" успешно создана!`);
       } else {
-        const columns = await orm.read(e.table).columnInfo();
+        const columns = await orm(e.table).columnInfo();
         console.log(`Существующие столбцы в таблице ${e.table}:`, columns);
 
         await orm.schema.alterTable(e.table, (table: Knex.AlterTableBuilder) =>
